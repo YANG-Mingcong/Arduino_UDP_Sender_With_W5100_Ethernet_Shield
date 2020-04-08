@@ -49,9 +49,6 @@ uint8_t loopCount = 0;
     uint8_t m_type = 1; //default type = 1 means 25 fps
 
 
-
-
-
 /*
 * author: Sebastian Wallin
 * description:
@@ -72,7 +69,7 @@ int toggle = 0;
 /* Setup phase: configure and enable timer2 overflow interrupt */
 void setup() {
   /* Configure the test pin as output */
-  //pinMode(2, OUTPUT);
+  pinMode(2, OUTPUT);
 
    /* First disable the timer overflow interrupt while we're configuring */
   TIMSK2 &= ~(1<<TOIE2);
@@ -127,12 +124,13 @@ ISR(TIMER2_OVF_vect) {
   /* Reload the timer */
   TCNT2 = tcnt2;
   /* Write to a digital pin so that we can confirm our timer */
-  //digitalWrite(2, toggle == 0 ? HIGH : LOW);
-  //toggle = ~toggle;
+  digitalWrite(2, toggle == 0 ? HIGH : LOW);
+  toggle = ~toggle;
 
-  //loopCount +=1;
-  loopCount = (loopCount+1) % 40;
-  goLoop();
+
+  
+    loopCount +=1;
+  
 }
 
 /* Main loop. Empty, but needed to avoid linker errors */
@@ -141,13 +139,16 @@ ISR(TIMER2_OVF_vect) {
 
 void loop() {
   //Serial.println(loopCount);
+
+  if(loopCount%40 == 0){
+    //UDP_TimeCode(0,0,0,0,1);
+    Serial.println(loopCount);
+    loopCount = 0;
+    }
 }
 
 void goLoop()
-{
-  if(loopCount == 0){
- 
-      
+{  
         //IPAddress broad_Cast(255,255,255,255);
         int m_frame = totalFrames % 25;
         int m_second =  (totalFrames / 25) % 60;
@@ -157,11 +158,14 @@ void goLoop()
         UDP_TimeCode(m_hour,m_minute,m_second,m_frame,1);
         //delay(40);
         totalFrames += 1;
-  }
 }
 
 void UDP_TimeCode(int _h, int _m, int _s, int _f ,int _type){
-
+    uint8_t m_h = 0;
+    uint8_t m_m = 0;
+    uint8_t m_s = 0;
+    uint8_t m_f = 0;
+    uint8_t m_type = 1; //default type = 1 means 25 fps
     
     Udp.beginPacket({0xFF,0xFF,0xFF,0xFF}, 1936);
 

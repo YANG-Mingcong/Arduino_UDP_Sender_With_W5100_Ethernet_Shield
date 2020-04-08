@@ -1,4 +1,23 @@
-//Failed
+/*
+ * Final creater: YANG Mingcong
+ * Version : 2020-04-08 V_1.2.1 Alpha
+ * 
+ * This version gives the standard timing function with hardware interruptin in Digital Pin 2
+ * 
+ * Using 1602A as displayer to display the timecode in the void loop() cause it did not need more precision
+ * 
+ * For the precision time,  part UDP package send, is directly be included in the Hardware Interrupt part
+ */
+
+
+//globle var
+uint8_t g_frame = 0;
+uint8_t g_second = 0;
+uint8_t g_minute = 0;
+uint8_t g_hour = 0;
+uint8_t g_type = 1;
+
+uint8_t loopCount = 0;
 
 
 /*
@@ -18,9 +37,6 @@
  */
 
 
-long long totalFrames = 0; //max is one hour, cause every one hour micros will goes 0,
-
-
 #include <SPI.h>          // needed for Arduino versions later than 0018
 #include <Ethernet.h>
 #include <EthernetUdp.h>  // UDP library from: bjoern@cs.stanford.edu 12/30/2008
@@ -35,29 +51,12 @@ IPAddress ip(192, 168, 3 ,209);
 unsigned int localPort = 1936;              // local port to listen on
 
 // buffers for receiving and sending data
-//char packetBuffer[UDP_TX_PACKET_MAX_SIZE];  //buffer to hold incoming packet,
-//char  ReplyBuffer[] = "acknowledged";       // a string to send back
+char packetBuffer[UDP_TX_PACKET_MAX_SIZE];  //buffer to hold incoming packet,
+char  ReplyBuffer[] = "acknowledged";       // a string to send back
 
 // An EthernetUDP instance to let us send and receive packets over UDP
 EthernetUDP Udp;
 
-//int second_tmp = 0;
-
-uint8_t loopCount = 0;
-
-    uint8_t m_h = 0;
-    uint8_t m_m = 0;
-    uint8_t m_s = 0;
-    uint8_t m_f = 0;
-    uint8_t m_type = 1; //default type = 1 means 25 fps
-
-
-
-//globle var
-int g_frame = 0;
-int g_second = 0;
-int g_minute = 0;
-int g_hour = 0;
 
 
 
@@ -73,12 +72,12 @@ int g_hour = 0;
  and shows the time.
 
   The circuit:
- * LCD RS pin to digital pin 12
- * LCD Enable pin to digital pin 11
- * LCD D4 pin to digital pin 5
- * LCD D5 pin to digital pin 4
- * LCD D6 pin to digital pin 3
- * LCD D7 pin to digital pin 2
+ * LCD RS pin to digital pin 12       8
+ * LCD Enable pin to digital pin 11   9
+ * LCD D4 pin to digital pin 5        2
+ * LCD D5 pin to digital pin 4        5
+ * LCD D6 pin to digital pin 3        6
+ * LCD D7 pin to digital pin 2        7
  * LCD R/W pin to ground
  * LCD VSS pin to ground
  * LCD VCC pin to 5V
@@ -104,7 +103,7 @@ int g_hour = 0;
 #include <LiquidCrystal.h>
 
 // initialize the library with the numbers of the interface pins
-LiquidCrystal lcd(8,9,2,5,6,7);//lcd(12, 11, 5, 4, 3, 2);
+LiquidCrystal lcd(8,9,3,5,6,7);//lcd(12, 11, 5, 4, 3, 2);
 
 
 /*
@@ -124,10 +123,14 @@ unsigned int tcnt2;
 /* Toggle HIGH or LOW digital write */
 int toggle = 0;
 
-/* Setup phase: configure and enable timer2 overflow interrupt */
 void setup() {
-  /* Configure the test pin as output */
-  //pinMode(2, OUTPUT);
+  // start the Ethernet and UDP:
+  Ethernet.begin(mac,ip);
+  Udp.begin(localPort);
+
+  
+/* Configure the test pin as output */
+  pinMode(2, OUTPUT);
 
    /* First disable the timer overflow interrupt while we're configuring */
   TIMSK2 &= ~(1<<TOIE2);
@@ -161,25 +164,19 @@ void setup() {
   TIMSK2 |= (1<<TOIE2);
 
 
-
-
-
-    //old Setup
-
-  delay(5000); //delay 5 second to wait system stable
-  // start the Ethernet and UDP:
-  Ethernet.begin(mac,ip);
-  Udp.begin(localPort);
-
-  Serial.begin(115000);
+  
 
 
   // set up the LCD's number of columns and rows:
+  //Serial.begin(9600);
   lcd.begin(16, 2);
   lcd.clear();
   // Print a message to the LCD.
   lcd.print("ArtNetTimeCode");
+
+  //delay(2000); //delay 5 second to wait system stable
 }
+
 
 /*
 * Install the Interrupt Service Routine (ISR) for Timer2 overflow.
@@ -192,101 +189,78 @@ ISR(TIMER2_OVF_vect) {
   digitalWrite(2, toggle == 0 ? HIGH : LOW);
   toggle = ~toggle;
 
-  loopCount +=1;
+  //loopCount +=1;
   //loopCount = (loopCount) % 40;
-  goLoop();
-}
-
-/* Main loop. Empty, but needed to avoid linker errors */
-
-
-
-
-void loop() {
+  //goLoop();
   
-}
-
-void goLoop()
-{
-  if(loopCount%40 == 0){
-        Serial.println(loopCount);
- 
-      
-        //IPAddress broad_Cast(255,255,255,255);
-        /**
-        int m_frame = totalFrames % 25;
-        int m_second =  (totalFrames / 25) % 60;
-        int m_minute = (totalFrames / 1500) % 60;
-        int m_hour = (totalFrames / 36000) % 24;
-        */
-        //UDP_TimeCode(g_hour,g_minute,g_second,g_frame,1);
-        showTC(g_hour,g_minute,g_second,g_frame);
-        
-        if(25==g_frame){
-            g_frame = 0;
-            g_second +=1;
-          }
-          else{
-            g_frame += 1;
-          }
-         if(60 == g_second){
-            g_second = 0;
-            g_minute +=1;
-          }
-          else{
-            g_second += 1;
-          }
-          if(60 == g_minute){
-            g_minute = 0;
-            g_hour +=1;
-          }
-          else{
-            g_minute += 1;
-          }
-          if(24 == g_hour){
-            g_hour = 0;
-          }
-          else{
-            g_hour += 1;
-          }
-        
-        
-        
-        
-        //UDP_TimeCode(m_hour,m_minute,m_second,m_frame,1);
-        //delay(40);
-        //totalFrames += 1;
-
-        
-  }
-}
-
-void UDP_TimeCode(int _h, int _m, int _s, int _f ,int _type){
-
-    
-    Udp.beginPacket({0xFF,0xFF,0xFF,0xFF}, 1936);
+  loopCount +=1;
+  if(0 == loopCount%40){
+      loopCount = 0;
+      timerCount();
+        Udp.beginPacket({0xFF,0xFF,0xFF,0xFF}, 1936);
 
         uint8_t _0 = 0x00;
-    
-    m_h = _h;
-    m_m = _m;
-    m_s = _s;
-    m_f = _f;
-    m_type = _type;
 
         uint8_t Data[19] = {'A','r','t','-','N','e','t', _0,
                                     _0, 0x97, _0, 14, _0, _0,
-                                    m_f, m_s, m_m, m_h, m_type };           //151 = 0x97
+                                    g_frame, g_second, g_minute, g_hour, g_type };           //151 = 0x97
   
         for(int i = 0; i < 19; i++){     Udp.write(Data[i]);    }        
         
-  Udp.endPacket();
+        Udp.endPacket();
+        
+    }
+}
+
+
+void loop() {
+  //for Crystal Display 1602A
+  showTC(g_hour,g_minute,g_second,g_frame);
+}
+
+void timerCount()
+{
   
+          if(25==g_frame){
+            g_frame = 0;
+            //g_second +=1;
+
+                          if(60 == g_second){
+                          g_second = 0;
+                          //g_minute +=1;
+              
+                                    if(60 == g_minute){
+                                        g_minute = 0;
+                                        //g_hour +=1;
+                              
+                                                if(24 == g_hour){
+                                                      g_hour = 0;
+                                                    }else{
+                                                      g_hour += 1;
+                                                    } 
+                                        
+                                      }else{
+                                        g_minute += 1;
+                                      }
+                        
+              
+              
+              
+                          
+                        }else{
+                          g_second += 1;
+                        }
+
+            
+          }else{
+            g_frame += 1;
+          }
+          
   }
 
+void showTC(uint8_t _h, uint8_t _m, uint8_t _s, uint8_t _f){
 
-void showTC(int _h, int _m, int _s, int _f){
-    //lcd.setCursor(0, 1);
+    lcd.setCursor(0, 1);
 
     
     //Format all int into 2 characts String
@@ -295,13 +269,15 @@ void showTC(int _h, int _m, int _s, int _f){
     String Data = intToString(_h) + ":"
                 + intToString(_m) + ":" 
                 + intToString(_s) + "."
-                + intToString(_f) + " -25f";
-
-    //lcd.print(Data);   
+                + intToString(_f) + " -25";
+    
+      
+    lcd.print(Data);
+    
+    
   }
 
-
-String intToString(int _int){
+String intToString(uint8_t _int){
   String _result;
   if(_int<10){ 
       _result = "0" + (String)_int;
@@ -311,3 +287,23 @@ String intToString(int _int){
 
   return _result;
   }
+
+
+void UDP_TimeCode(uint8_t _h, uint8_t _m, uint8_t _s, uint8_t _f ,uint8_t _type){
+
+    
+    Udp.beginPacket({0xFF,0xFF,0xFF,0xFF}, 1936);
+
+        uint8_t _0 = 0x00;
+
+        uint8_t Data[19] = {'A','r','t','-','N','e','t', _0,
+                                    _0, 0x97, _0, 14, _0, _0,
+                                    _f, _s, _m, _h, _type };           //151 = 0x97
+  
+        for(int i = 0; i < 19; i++){     Udp.write(Data[i]);    }        
+        
+  Udp.endPacket();
+  
+  }
+
+

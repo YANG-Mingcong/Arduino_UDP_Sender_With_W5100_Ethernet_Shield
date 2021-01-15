@@ -9,6 +9,12 @@
  * For the precision time,  part UDP package send, is directly be included in the Hardware Interrupt part
  * 
  * tested result 55sec for 60 sec real time.
+ * 
+ *  * update note: 1.2.2
+ * change the position of countLoop +=1 after send package
+ * change the 25-60-60-24 to 24-59-59-23 in timeCount part
+ * result 57sec for 60 sec real time.
+ * 
  */
 
 
@@ -195,7 +201,6 @@ ISR(TIMER2_OVF_vect) {
   //loopCount = (loopCount) % 40;
   //goLoop();
   
-  loopCount +=1;
   if(0 == loopCount%40){
       loopCount = 0;
       timerCount();
@@ -212,6 +217,8 @@ ISR(TIMER2_OVF_vect) {
         Udp.endPacket();
         
     }
+      loopCount +=1;
+
 }
 
 
@@ -223,19 +230,19 @@ void loop() {
 void timerCount()
 {
   
-          if(25==g_frame){
+          if(24==g_frame){
             g_frame = 0;
             //g_second +=1;
 
-                          if(60 == g_second){
+                          if(59 == g_second){
                           g_second = 0;
                           //g_minute +=1;
               
-                                    if(60 == g_minute){
+                                    if(59 == g_minute){
                                         g_minute = 0;
                                         //g_hour +=1;
                               
-                                                if(24 == g_hour){
+                                                if(23 == g_hour){
                                                       g_hour = 0;
                                                     }else{
                                                       g_hour += 1;

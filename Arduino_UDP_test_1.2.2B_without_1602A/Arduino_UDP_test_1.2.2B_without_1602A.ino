@@ -1,6 +1,6 @@
 /*
  * Final creater: YANG Mingcong
- * Version : 2020-04-08 V_1.2.1 Alpha
+ * Version : 2020-04-08 V_1.2.2 Alpha -b version with out 1602
  * 
  * This version gives the standard timing function with hardware interruptin in Digital Pin 2
  * 
@@ -8,7 +8,15 @@
  * 
  * For the precision time,  part UDP package send, is directly be included in the Hardware Interrupt part
  * 
- * tested result 55sec for 60 sec real time.
+ * 2nd tested just remove the lcd display function
+ * result 55sec for 60 sec real time. same result
+ * 
+ * update note: 1.2.2
+ * change the position of countLoop +=1 after send package
+ * change the 25-60-60-24 to 24-59-59-23 in timeCount part
+ * result 57sec for 60 sec real time.
+ * 
+ * 
  */
 
 
@@ -60,52 +68,6 @@ char  ReplyBuffer[] = "acknowledged";       // a string to send back
 EthernetUDP Udp;
 
 
-
-
-/*
-  LiquidCrystal Library - Hello World
-
- Demonstrates the use a 16x2 LCD display.  The LiquidCrystal
- library works with all LCD displays that are compatible with the
- Hitachi HD44780 driver. There are many of them out there, and you
- can usually tell them by the 16-pin interface.
-
- This sketch prints "Hello World!" to the LCD
- and shows the time.
-
-  The circuit:
- * LCD RS pin to digital pin 12       8
- * LCD Enable pin to digital pin 11   9
- * LCD D4 pin to digital pin 5        2
- * LCD D5 pin to digital pin 4        5
- * LCD D6 pin to digital pin 3        6
- * LCD D7 pin to digital pin 2        7
- * LCD R/W pin to ground
- * LCD VSS pin to ground
- * LCD VCC pin to 5V
- * 10K resistor:
- * ends to +5V and ground
- * wiper to LCD VO pin (pin 3)
-
- Library originally added 18 Apr 2008
- by David A. Mellis
- library modified 5 Jul 2009
- by Limor Fried (http://www.ladyada.net)
- example added 9 Jul 2009
- by Tom Igoe
- modified 22 Nov 2010
- by Tom Igoe
-
- This example code is in the public domain.
-
- http://www.arduino.cc/en/Tutorial/LiquidCrystal
- */
-
-// include the library code:
-#include <LiquidCrystal.h>
-
-// initialize the library with the numbers of the interface pins
-LiquidCrystal lcd(8,9,3,5,6,7);//lcd(12, 11, 5, 4, 3, 2);
 
 
 /*
@@ -165,18 +127,6 @@ void setup() {
   TCNT2 = tcnt2;
   TIMSK2 |= (1<<TOIE2);
 
-
-  
-
-
-  // set up the LCD's number of columns and rows:
-  //Serial.begin(9600);
-  lcd.begin(16, 2);
-  lcd.clear();
-  // Print a message to the LCD.
-  lcd.print("ArtNetTimeCode");
-
-  //delay(2000); //delay 5 second to wait system stable
 }
 
 
@@ -195,7 +145,6 @@ ISR(TIMER2_OVF_vect) {
   //loopCount = (loopCount) % 40;
   //goLoop();
   
-  loopCount +=1;
   if(0 == loopCount%40){
       loopCount = 0;
       timerCount();
@@ -212,30 +161,32 @@ ISR(TIMER2_OVF_vect) {
         Udp.endPacket();
         
     }
+      loopCount +=1;
+
 }
 
 
 void loop() {
   //for Crystal Display 1602A
-  showTC(g_hour,g_minute,g_second,g_frame);
+  
 }
 
 void timerCount()
 {
   
-          if(25==g_frame){
+          if(24==g_frame){
             g_frame = 0;
             //g_second +=1;
 
-                          if(60 == g_second){
+                          if(59 == g_second){
                           g_second = 0;
                           //g_minute +=1;
               
-                                    if(60 == g_minute){
+                                    if(59 == g_minute){
                                         g_minute = 0;
                                         //g_hour +=1;
                               
-                                                if(24 == g_hour){
+                                                if(23 == g_hour){
                                                       g_hour = 0;
                                                     }else{
                                                       g_hour += 1;
@@ -260,52 +211,5 @@ void timerCount()
           
   }
 
-void showTC(uint8_t _h, uint8_t _m, uint8_t _s, uint8_t _f){
-
-    lcd.setCursor(0, 1);
-
-    
-    //Format all int into 2 characts String
-    //String Data = "00:00:00.00 -25f";
-
-    String Data = intToString(_h) + ":"
-                + intToString(_m) + ":" 
-                + intToString(_s) + "."
-                + intToString(_f) + " -25";
-    
-      
-    lcd.print(Data);
-    
-    
-  }
-
-String intToString(uint8_t _int){
-  String _result;
-  if(_int<10){ 
-      _result = "0" + (String)_int;
-    }else{
-      _result = (String)_int;
-    }
-
-  return _result;
-  }
-
-
-void UDP_TimeCode(uint8_t _h, uint8_t _m, uint8_t _s, uint8_t _f ,uint8_t _type){
-
-    
-    Udp.beginPacket({0xFF,0xFF,0xFF,0xFF}, 1936);
-
-        uint8_t _0 = 0x00;
-
-        uint8_t Data[19] = {'A','r','t','-','N','e','t', _0,
-                                    _0, 0x97, _0, 14, _0, _0,
-                                    _f, _s, _m, _h, _type };           //151 = 0x97
-  
-        for(int i = 0; i < 19; i++){     Udp.write(Data[i]);    }        
-        
-  Udp.endPacket();
-  
-  }
 
 
